@@ -23,6 +23,11 @@ data class Symbol(
     val coordinate: Coordinate
 )
 
+data class Gear(
+    val symbol: Symbol,
+    val engineParts: Pair<EnginePart, EnginePart>,
+)
+
 data class EnginePart(
     val id: Int,
     val line: Int,
@@ -39,6 +44,17 @@ data class Engine(
     val relevantParts get() = parts.filter { enginePart -> enginePart.coordinates.any {
         coordinate -> coordinate.isAdjacent(symbols.map { it.coordinate })
     } }
+
+    private val stars get() = symbols.filter { it.identifier == '*' }
+
+    val gears: List<Gear> get() {
+        val gears = mutableListOf<Gear>()
+        stars.forEach { star ->
+            val adjacentParts = parts.filter { enginePart -> enginePart.coordinates.any { coordinate -> coordinate.isAdjacent(star.coordinate) } }
+            if (adjacentParts.size == 2) gears.add(Gear(star, adjacentParts[0] to adjacentParts[1]))
+        }
+        return gears
+    }
 }
 
 fun main() {
@@ -73,14 +89,15 @@ fun main() {
     }
 
     fun part2(input: List<String>): Int {
-        return 0
+        val engine = parseSchematic(input)
+        return engine.gears.map { it.engineParts.first.id * it.engineParts.second.id }.sumOf { it }
     }
 
     // test if implementation meets criteria from the description, like:
     val testInput = readInput("03", "Day03_test")
-//    val secondTestInput = readInput("03", "Day03_test")
+    val secondTestInput = readInput("03", "Day03_test")
     check(part1(testInput) == 4361)
-//    check(part2(secondTestInput) == 2286)
+    check(part2(secondTestInput) == 467835)
 
     val input = readInput("03", "Day03")
     part1(input).println()
