@@ -50,36 +50,36 @@ data class Almanac(
 
 fun main() {
 
-    fun mapSeeds(seeds: List<Seed>, almanacs: List<Almanac>): MutableList<Seed> {
-        val resultSeeds: MutableList<Seed> = mutableListOf()
-        for (seed in seeds) {
-            var updatedSeed = seed
-            almanacs.forEach { almanac ->
-                almanac.converters.firstOrNull { converter -> updatedSeed.id in converter.sourceRange }?.let {
-                    updatedSeed = it.map(updatedSeed)
-                }
-            }
-            println("Parsed seed $seed to $updatedSeed, seed #${seeds.indexOf(seed) + 1} from #${seeds.size}")
-            resultSeeds.add(updatedSeed)
+    fun smallestSeed(seeds: List<String>, almanacs: List<Almanac>): Seed {
+        var lowestSeed = Seed(Long.MAX_VALUE)
+        val seedsRanges = seeds.mapIndexedNotNull { index, id ->
+            if (index % 2 == 0) (id.toLong()..(id.toLong() + seeds[index + 1].toLong()))
+            else null
         }
-        return resultSeeds
+        for (range in seedsRanges) {
+            for (seed in range) {
+                var updatedSeed = Seed(seed)
+                almanacs.forEach { almanac ->
+                    almanac.converters.firstOrNull { converter -> updatedSeed.id in converter.sourceRange }?.let {
+                        updatedSeed = it.map(updatedSeed)
+                    }
+                }
+                if (updatedSeed.id < lowestSeed.id) lowestSeed = updatedSeed
+            }
+            println("Parsed range #${seedsRanges.indexOf(range) + 1} from #${seedsRanges.size}")
+        }
+        return lowestSeed
     }
 
     fun parseInput(input: List<String>, seedsAsRanges: Boolean = false): List<Seed>{
         var seeds: MutableList<Seed> = mutableListOf()
         val almanacs: MutableList<Almanac> = mutableListOf()
+        var splitLine: List<String> = listOf()
         input.forEach { line ->
             when {
                 line.startsWith("seeds: ") -> {
-                    val splitLine = line.substringAfter("seeds: ").split(' ')
+                    splitLine = line.substringAfter("seeds: ").split(' ')
                     if (!seedsAsRanges) seeds = splitLine.map { Seed(it.toLong()) }.toMutableList()
-                    else {
-                        var start = 0
-                        splitLine.forEachIndexed { index, id ->
-                            if (index % 2 == 0) start = id.toInt()
-                            else seeds.addAll((start..(start + id.toInt())).map { Seed(it.toLong()) })
-                        }
-                    }
                 }
                 line.contains('-') -> {
                     // Before adding new almanac, get updated seeds for the last one to get correct input
@@ -94,7 +94,7 @@ fun main() {
         }
         if (!seedsAsRanges) seeds = almanacs.last().updateSeeds()
         println("Parsed almanac from ${almanacs.last().from} to ${almanacs.last().to}, seeds = $seeds")
-        if (seedsAsRanges) seeds = mapSeeds(seeds, almanacs)
+        if (seedsAsRanges) seeds = mutableListOf(smallestSeed(splitLine, almanacs))
         return seeds
     }
 
@@ -103,7 +103,7 @@ fun main() {
     }
 
     fun part2(input: List<String>): Int {
-        return parseInput(input, seedsAsRanges = true).minOf { it.id }.toInt()
+        return parseInput(input, seedsAsRanges = true).first().id.toInt()
     }
 
     // test if implementation meets criteria from the description, like:
